@@ -1,0 +1,188 @@
+package org.zerock.controller;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
+
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+
+import lombok.extern.log4j.Log4j;
+
+@Controller
+@Log4j
+public class CommonController2 {
+//	@GetMapping("/accessError")
+//	public void accessDenied(Authentication auth, Model model) {
+//		log.info("access Denied : " + auth);
+//		model.addAttribute("msg", "Access Denied");
+//	}
+//
+//	@GetMapping("/customLogin")
+//	public String loginInput(String error, String logout, Model model) {
+//		log.info("error: " + error);
+//		log.info("logout: " + logout);
+//
+//		if (isAuthenticated()) {
+//			return "redirect:/";
+//		}
+//
+//		if (error != null) {
+//			model.addAttribute("error", "�븘�씠�뵒�� 鍮꾨�踰덊샇瑜� �솗�씤�븯�꽭�슂.");
+//			return "customLogin";
+//		}
+//
+//		if (logout != null) {
+//			model.addAttribute("logout", "濡쒓렇�븘�썐 �릺�뿀�뒿�땲�떎.	");
+//			return "customLogin";
+//		}
+//		return "customLogin";
+//	}
+//
+//	@PreAuthorize("isAuthenticated()")
+//	@GetMapping("/customLogout")
+//	public void logoutGet() {
+//		log.info("custom logout");
+//	}
+//
+//	private boolean isAuthenticated() {
+//		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//		if (authentication == null || AnonymousAuthenticationToken.class.isAssignableFrom(authentication.getClass())) {
+//			return false;
+//		}
+//		return authentication.isAuthenticated();
+//	}
+
+	@GetMapping("/jsonParse")
+	public void jsonParse(Model model) {
+		
+		JSONObject jsonObject = conAddr();
+		JSONObject basicInfo = (JSONObject) jsonObject.get("basicInfo");
+		JSONObject address = (JSONObject) basicInfo.get("address");
+		JSONObject newaddr = (JSONObject) address.get("newaddr");
+		JSONObject region = (JSONObject) address.get("region");
+		JSONObject openHour = (JSONObject) basicInfo.get("openHour");
+		JSONObject realtime = (JSONObject) openHour.get("realtime");
+		JSONArray periodList = (JSONArray) openHour.get("periodList");
+		JSONObject time = (JSONObject) periodList.get(0);
+		JSONArray timeList = (JSONArray) time.get("timeList");
+		
+		JSONObject menuInfo = (JSONObject) jsonObject.get("menuInfo");
+		
+		JSONArray menuList = (JSONArray) menuInfo.get("menuList");
+		
+		String fulladdress = region.get("newaddrfullname")+"" +newaddr.get("newaddrfull")+address.get("addrdetail");
+		
+		model.addAttribute("msg1", fulladdress);
+		model.addAttribute("msg2", basicInfo.get("placenamefull"));
+		model.addAttribute("msg3",basicInfo.get("phonenum"));
+		model.addAttribute("msg4",basicInfo.get("catename"));
+		model.addAttribute("msg5",realtime.get("open"));
+		if(realtime.get("open").equals("N")) {
+			model.addAttribute("msg5","�쁺�뾽�쟾");
+		}
+		else if (realtime.get("open").equals("Y")){
+			model.addAttribute("msg5","�쁺�뾽以�");
+			
+		}
+		
+		if(basicInfo.get("facilityInfo") != null) {
+			JSONObject facilityInfo = (JSONObject) basicInfo.get("facilityInfo");
+			if(facilityInfo.get("parking").equals("Y")) {
+				model.addAttribute("parking","二쇱감媛��뒫");
+			} else if(facilityInfo.get("parking").equals("N")) {
+				model.addAttribute("parking","二쇱감 遺덇�");
+			}
+			
+		}
+		
+		model.addAttribute("msg6",time.get("periodName"));
+		
+		for(int i=0 ;  i <timeList.size(); i ++) {
+			JSONObject otime = (JSONObject) timeList.get(i);
+			model.addAttribute("timeName"+i,otime.get("timeName"));
+			model.addAttribute("timeSE"+i,otime.get("timeSE"));
+			model.addAttribute("dayOfWeek"+i,otime.get("dayOfWeek"));
+		}
+		if(openHour.get("offdayList") !=null) {
+			JSONArray offdayList = (JSONArray) openHour.get("offdayList");
+			model.addAttribute("holidayName","�쑕臾댁씪");
+			for(int i = 0; i < offdayList.size() ; i ++) {
+				JSONObject holiday = (JSONObject) offdayList.get(i);
+				model.addAttribute("holidayName"+i,holiday.get("holidayName"));
+			}
+		}
+		
+		if(openHour.get("openhourDisplayText") !=null) {
+			model.addAttribute("openhourDisplayText",openHour.get("openhourDisplayText"));
+			
+		}
+
+		
+		model.addAttribute("photourl",basicInfo.get("mainphotourl"));
+		
+		
+			for(int i =0 ; i <menuList.size(); i++) {
+				JSONObject menu = (JSONObject) menuList.get(i);
+				model.addAttribute("menu"+i,menu.get("menu"));
+				model.addAttribute("price"+i,menu.get("price"));
+				
+			}
+		//model.addAttribute("menuboardphotourlList",menuboardphotourlList);
+		
+		
+		
+	}
+	// �쎒 �궗�씠�듃 �옄泥닿� JSON 媛앹껜濡� ���옣�릺�뼱 �엳�뼱 �쎒�뿉 �엳�뒗 JSON�쓣 媛��졇�삤�뒗  �븿�닔
+	public static JSONObject conAddr() {
+		BufferedReader bufferedReader = null;
+		JSONObject resultSet = null;
+		try {
+			String requesturl = "https://place.map.kakao.com/main/v/911163785";
+			URL url = new URL(requesturl);
+			URLConnection conn = url.openConnection();
+			bufferedReader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+			resultSet = parseJSONData(bufferedReader);
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				bufferedReader.close();
+			} catch (IOException e) {
+
+			}
+		}
+		return resultSet;
+	}
+	// �뜲�씠�꽣瑜� �뙆�떛�븯�뒗 �븿�닔
+	private static JSONObject parseJSONData(BufferedReader bufferedReader) {
+		JSONObject resultSet = null;
+		try {
+			JSONParser jsonParser = new JSONParser();
+			JSONObject jsonObject = (JSONObject) jsonParser.parse(bufferedReader);
+
+			resultSet = jsonObject;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return resultSet;
+	}
+	@GetMapping("/login")
+	public void login() {	
+	}
+}

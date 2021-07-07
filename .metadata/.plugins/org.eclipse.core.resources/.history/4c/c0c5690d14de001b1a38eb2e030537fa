@@ -1,0 +1,25 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>작성목록 수정</title>
+<link rel="stylesheet" href="resources/css/reply.css">
+</head>
+<body>
+	<header>
+	<div class="text-area">
+	<h1>작성목록 수정</h1>
+	</div>
+	</header>
+	<div class="menu">
+	<h2>음식점 이름</h2>
+	<img src="http://placehold.it/200x200">
+	</div>
+	<div class="reply">
+	<h6>2021-07-06</h6>
+	<input type="textarea" cols="200px" rows="100px">
+	</div>
+</body>
+</html>
